@@ -205,8 +205,12 @@ export const mutations = {
       lastLogin: new Date().toISOString()
     });
 
+    const token = generateToken(user, ctx);
+
+    ctx['response'].cookie('lapki_auth_token', token, { httpOnly: true });
+
     return {
-      token: generateToken(user, ctx),
+      token,
       user
     };
   },
