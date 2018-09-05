@@ -168,11 +168,13 @@ export const mutations = {
   async login(
     parent: any,
     { email, password }: { email: string; password: string },
-    ctx: Context
+    ctx: Context,
+    info: any
   ) {
     const user = await ctx.graphqlAuthentication.adapter.findUserByEmail(
       ctx,
-      email
+      email,
+      info
     );
     if (!user) {
       throw new UserNotFoundError();
