@@ -1,4 +1,4 @@
-import { Prisma, User } from './generated/prisma';
+import { Prisma } from './generated/prisma';
 import { GraphqlAuthenticationAdapter, ID } from 'graphql-authentication';
 import gql from 'graphql-tag';
 
