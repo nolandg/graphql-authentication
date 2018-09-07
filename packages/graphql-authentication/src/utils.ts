@@ -10,12 +10,17 @@ export interface Context {
   req?: any;
 }
 
-function _getUserId(ctx: Context): string {
+function _getUserIdFromCookie(ctx: Context): string {
   const request = ctx.req || ctx.request;
-  // -------- cookie approach --------
   if (!request.headers.cookie) return '';
+  const cookieName = ctx.graphqlAuthentication.tokenCookieName;
+  if (!cookieName)
+    throw new Error(
+      'You must pass tokenCookieName to graphqlAuthentication when using "cookie" as tokenExchangeScheme.'
+    );
 
   const cookies = cookie.parse(request.headers.cookie);
+
   if (cookies.lapki_auth_token) {
     const token = cookies.lapki_auth_token;
     const { userId } = jwt.verify(token, ctx.graphqlAuthentication.secret) as {
@@ -25,18 +30,35 @@ function _getUserId(ctx: Context): string {
   }
 
   return '';
+}
 
-  // -------- header approach -------------
-  // For Apollo Server 2.0+ it is ctx.req and for GraphQL Yoga ctx.request. Maybe there is a better way...
-  // const Authorization = request.get('Authorization');
-  // if (Authorization) {
-  //   const token = Authorization.replace('Bearer ', '');
-  //   const { userId } = jwt.verify(token, ctx.graphqlAuthentication.secret) as {
-  //     userId: ID;
-  //   };
-  //   return userId;
-  // }
-  // return '';
+function _getUserIdFromHeader(ctx: Context): string {
+  const request = ctx.req || ctx.request;
+
+  const Authorization = request.get('Authorization');
+  if (Authorization) {
+    const token = Authorization.replace('Bearer ', '');
+    const { userId } = jwt.verify(token, ctx.graphqlAuthentication.secret) as {
+      userId: ID;
+    };
+    return userId;
+  }
+  return '';
+}
+
+function _getUserId(ctx: Context): string {
+  const scheme = ctx.graphqlAuthentication.tokenExchangeScheme;
+  if (!scheme)
+    throw new Error(
+      'You must pass tokenExchangeScheme to graphqlAuthentication.'
+    );
+
+  if (scheme === 'header') return _getUserIdFromHeader(ctx);
+  if (scheme === 'cookie') return _getUserIdFromCookie(ctx);
+
+  throw new Error(
+    `Unrecognized value "${scheme}" for tokenExchangeScheme passed to graphqlAuthentication`
+  );
 }
 
 export function getUserId(ctx: Context): string {
