@@ -7,6 +7,7 @@ const cookie = require('cookie');
 export interface Context {
   graphqlAuthentication: IGraphqlAuthenticationConfig;
   request?: any;
+  response?: any;
   req?: any;
 }
 
@@ -14,22 +15,25 @@ function _getUserIdFromCookie(ctx: Context): string {
   const request = ctx.req || ctx.request;
   if (!request.headers.cookie) return '';
   const cookieName = ctx.graphqlAuthentication.tokenCookieName;
+  const insecureCookieName = `${cookieName}_insecure`;
   if (!cookieName)
     throw new Error(
       'You must pass tokenCookieName to graphqlAuthentication when using "cookie" as tokenExchangeScheme.'
     );
 
-  const cookies = cookie.parse(request.headers.cookie);
+  const cookies = cookie.parse(request.headers.cookie || '');
+  const cookieValue = cookies[cookieName];
+  const insecureCookieValue = cookies[insecureCookieName];
 
-  if (cookies.lapki_auth_token) {
-    const token = cookies.lapki_auth_token;
-    const { userId } = jwt.verify(token, ctx.graphqlAuthentication.secret) as {
-      userId: ID;
-    };
-    return userId;
-  }
+  // 2-cookie system allows user to logout without hitting server
+  if (!cookieValue) return '';
+  if (cookieValue !== insecureCookieValue) return '';
 
-  return '';
+  const token = cookieValue;
+  const { userId } = jwt.verify(token, ctx.graphqlAuthentication.secret) as {
+    userId: ID;
+  };
+  return userId;
 }
 
 function _getUserIdFromHeader(ctx: Context): string {

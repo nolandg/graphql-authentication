@@ -207,7 +207,11 @@ export const mutations = {
 
     const token = generateToken(user, ctx);
 
-    ctx['response'].cookie('lapki_auth_token', token, { httpOnly: true });
+    const cookieName = ctx.graphqlAuthentication.tokenCookieName;
+    const insecureCookieName = `${cookieName}_insecure`;
+    ctx.response.cookie(cookieName, token, { httpOnly: true });
+    // Adding the 2nd cookie allows user to logout without hitting the server
+    ctx.response.cookie(insecureCookieName, token, { httpOnly: false });
 
     return {
       token,
