@@ -47,21 +47,22 @@ export class GraphqlAuthenticationPrismaAdapter
     return this.db(ctx).query.user({ where: { id } }, info);
   }
   findUserByEmail(ctx: object, email: string, info?: any) {
-    const query = userQuery;
+    const query = JSON.parse(JSON.stringify(userQuery));
 
     // Check if application requested any additional fields of the User object
     // or supplied any fragments.
     // If so, merge them in with the required above
     if (info) {
-      query.definitions = query.definitions.filter(
-        def => def.kind !== 'FragmentDefinition'
-      );
+      // query.definitions = query.definitions.filter(
+      //   def => def.kind !== 'FragmentDefinition'
+      // );
       const requiredSelections = query.definitions[0].selectionSet.selections;
       const topLevelSelections =
         info.operation.selectionSet.selections[0].selectionSet.selections;
       const userSelections = topLevelSelections.find(
         s => s.name.value === 'user'
       );
+
       if (userSelections) {
         query.definitions[0].selectionSet.selections = [
           ...requiredSelections,
@@ -76,6 +77,8 @@ export class GraphqlAuthenticationPrismaAdapter
         }
       }
     }
+
+    query.fieldNodes = info.fieldNodes;
 
     return this.db(ctx).query.user({ where: { email } }, query);
   }

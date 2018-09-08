@@ -23,16 +23,27 @@ function _getUserIdFromCookie(ctx: Context): string {
 
   const cookies = cookie.parse(request.headers.cookie || '');
   const cookieValue = cookies[cookieName];
+  // 2-cookie system allows user to logout without hitting server
   const insecureCookieValue = cookies[insecureCookieName];
 
-  // 2-cookie system allows user to logout without hitting server
-  if (!cookieValue) return '';
-  if (cookieValue !== insecureCookieValue) return '';
+  if (!cookieValue || !insecureCookieValue) return '';
+  if (cookieValue == insecureCookieValue) return '';
 
-  const token = cookieValue;
-  const { userId } = jwt.verify(token, ctx.graphqlAuthentication.secret) as {
+  const { userId } = jwt.verify(
+    cookieValue,
+    ctx.graphqlAuthentication.secret
+  ) as {
     userId: ID;
   };
+  const { userId: insecureUserId } = jwt.verify(
+    insecureCookieValue,
+    ctx.graphqlAuthentication.secret
+  ) as {
+    userId: ID;
+  };
+
+  if (userId !== insecureUserId) return '';
+
   return userId;
 }
 
