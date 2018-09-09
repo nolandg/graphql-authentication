@@ -7,6 +7,7 @@ export interface IGraphqlAuthenticationConfig {
   mailer?: Email;
   mailAppUrl?: string;
   secret: string;
+  secretSalt: string;
   requiredConfirmedEmailForLogin?: boolean;
   hookInviteUserPostCreate?: (
     data: any,

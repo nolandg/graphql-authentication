@@ -37,7 +37,7 @@ function _getUserIdFromCookie(ctx: Context): string {
   };
   const { userId: insecureUserId } = jwt.verify(
     insecureCookieValue,
-    ctx.graphqlAuthentication.secret
+    `${ctx.graphqlAuthentication.secret}${ctx.graphqlAuthentication.secretSalt}`
   ) as {
     userId: ID;
   };

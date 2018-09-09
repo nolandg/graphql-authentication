@@ -25,12 +25,24 @@ import {
   UserUpdateInput
 } from './binding';
 
-// addRandom is a way to make the token different from the previously generated one
-// to prevent an attacker from submitting identical tokens for both secure and not secure
-function generateToken(user: User, ctx: Context, addRandom = false) {
+function generateToken(user: User, ctx: Context, useSalt = false) {
   const obj = { userId: user.id } as any;
-  if (addRandom) obj.randomNumber = Math.floor(Math.random() * 1000000000);
-  return jwt.sign(obj, ctx.graphqlAuthentication.secret);
+  const salt = useSalt ? ctx.graphqlAuthentication.secretSalt : '';
+  return jwt.sign(obj, `${ctx.graphqlAuthentication.secret}${salt}`);
+}
+
+function setAuthCookies(user: any, ctx: Context) {
+  const token = generateToken(user, ctx);
+  const insecureToken = generateToken(user, ctx, true);
+
+  const cookieName = ctx.graphqlAuthentication.tokenCookieName;
+  const insecureCookieName = `${cookieName}_insecure`;
+
+  ctx.response.cookie(cookieName, token, { httpOnly: true });
+  // Adding the 2nd cookie allows user to logout without hitting the server
+  ctx.response.cookie(insecureCookieName, insecureToken, { httpOnly: false });
+
+  return token;
 }
 
 function validatePassword(ctx: Context, value: string) {
@@ -129,8 +141,10 @@ export const mutations = {
       });
     }
 
+    const token = setAuthCookies(newUser, ctx);
+
     return {
-      token: generateToken(newUser, ctx),
+      token,
       user: newUser
     };
   },
@@ -209,15 +223,7 @@ export const mutations = {
       lastLogin: new Date().toISOString()
     });
 
-    const token = generateToken(user, ctx);
-    const insecureToken = generateToken(user, ctx, true);
-
-    const cookieName = ctx.graphqlAuthentication.tokenCookieName;
-    const insecureCookieName = `${cookieName}_insecure`;
-
-    ctx.response.cookie(cookieName, token, { httpOnly: true });
-    // Adding the 2nd cookie allows user to logout without hitting the server
-    ctx.response.cookie(insecureCookieName, insecureToken, { httpOnly: false });
+    const token = setAuthCookies(user, ctx);
 
     return {
       token,

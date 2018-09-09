@@ -78,8 +78,6 @@ export class GraphqlAuthenticationPrismaAdapter
       }
     }
 
-    query.fieldNodes = info.fieldNodes;
-
     return this.db(ctx).query.user({ where: { email } }, query);
   }
   userExistsByEmail(ctx: object, email: string) {
