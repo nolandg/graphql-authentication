@@ -1,10 +1,9 @@
-import * as Email from 'email-templates';
 import { User } from './Adapter';
 import { Context } from './utils';
 import { GraphqlAuthenticationAdapter } from './Adapter';
 
 export interface IGraphqlAuthenticationConfig {
-  mailer?: Email;
+  mailer: any;
   mailAppUrl?: string;
   secret: string;
   secretSalt: string;

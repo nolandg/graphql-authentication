@@ -55,6 +55,33 @@ function getHashedPassword(value: string) {
   return bcrypt.hash(value, 10);
 }
 
+function buildEmailMessage(data: any, ctx: Context) {
+  const { templateModel, ...messageData } = data;
+
+  const message = {
+    ...ctx.graphqlAuthentication.mailer.message,
+    ...messageData,
+    templateModel: {
+      ...ctx.graphqlAuthentication.mailer.message.templateModel,
+      ...templateModel
+    }
+  };
+
+  return message;
+}
+
+function sendEmail(data: any, ctx: Context) {
+  const message = buildEmailMessage(data, ctx);
+  ctx.graphqlAuthentication.mailer.transport.sendMail(
+    message,
+    (error, info) => {
+      if (error) {
+        console.error('Error sending email: ', error);
+      }
+    }
+  );
+}
+
 export const mutations = {
   async signupByInvite(
     parent: any,
@@ -343,7 +370,7 @@ export const mutations = {
       email
     );
     if (!user) {
-      return { ok: true };
+      return { ok: false };
     }
 
     // This token will be used in the email to the user.
@@ -359,19 +386,20 @@ export const mutations = {
       resetExpires
     });
 
-    if (ctx.graphqlAuthentication.mailer) {
-      ctx.graphqlAuthentication.mailer.send({
-        template: 'passwordReset',
-        message: {
-          to: user.email
-        },
-        locals: {
-          mailAppUrl: ctx.graphqlAuthentication.mailAppUrl,
-          resetToken,
-          email
+    const rootUrl = ctx.graphqlAuthentication.mailer.rootUrl;
+    sendEmail(
+      {
+        templateId: 8248819,
+        to: user.email,
+        templateModel: {
+          name: user.name,
+          action_url: `${rootUrl}/login/reset-password/${user.email}/${
+            user.name
+          }/${resetToken}`
         }
-      });
-    }
+      },
+      ctx
+    );
 
     return {
       ok: true
