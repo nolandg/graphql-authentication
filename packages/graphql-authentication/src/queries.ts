@@ -3,7 +3,7 @@ import { getUserId, Context } from './utils';
 import { User } from './Adapter';
 
 export const queries = {
-  currentUser(parent: any, args: any, ctx: Context, info: any) {
+  currentUser: async (parent: any, args: any, ctx: Context, info: any) => {
     const id = getUserId(ctx);
     return ctx.graphqlAuthentication.adapter.findUserById(ctx, id, info);
   }

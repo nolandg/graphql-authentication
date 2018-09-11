@@ -9,6 +9,8 @@ export interface Context {
   request?: any;
   response?: any;
   req?: any;
+  settings: any;
+  db: any;
 }
 
 function _getUserIdFromCookie(ctx: Context): string {

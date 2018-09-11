@@ -25,6 +25,10 @@ import {
   UserUpdateInput
 } from './binding';
 
+function getAuthRootUrl(ctx: Context) {
+  return ctx.settings.rootUrl + '/authentication';
+}
+
 function generateToken(user: User, ctx: Context, useSalt = false) {
   const obj = { userId: user.id } as any;
   const salt = useSalt ? ctx.graphqlAuthentication.secretSalt : '';
@@ -126,7 +130,7 @@ export const mutations = {
   },
 
   async signup(parent: any, { data }: { data: SignupInput }, ctx: Context) {
-    if (!data.email) {
+    if (!data.email || !data.name) {
       throw new MissingDataError();
     }
     const userExists = await ctx.graphqlAuthentication.adapter.userExistsByEmail(
@@ -141,32 +145,36 @@ export const mutations = {
     const hashedPassword = await getHashedPassword(data.password);
     const emailConfirmToken = uuid();
 
-    const newUser = await ctx.graphqlAuthentication.adapter.createUserBySignup(
-      ctx,
-      {
+    const newUser = await ctx.db.mutation.createUser({
+      data: {
         name: data.name,
         email: data.email,
         password: hashedPassword,
         emailConfirmToken,
         emailConfirmed: false,
         inviteAccepted: true,
-        joinedAt: new Date().toISOString()
-      }
-    );
-
-    if (ctx.graphqlAuthentication.mailer) {
-      ctx.graphqlAuthentication.mailer.send({
-        template: 'signupUser',
-        message: {
-          to: newUser.email
-        },
-        locals: {
-          mailAppUrl: ctx.graphqlAuthentication.mailAppUrl,
-          emailConfirmToken,
-          email: newUser.email
+        joinedAt: new Date().toISOString(),
+        roles: {
+          connect: [{ name: 'authenticated' }]
         }
-      });
-    }
+      }
+    });
+
+    const url = `${getAuthRootUrl(ctx)}/confirm-email/${newUser.email}/${
+      newUser.name
+    }/${emailConfirmToken}`;
+    sendEmail(
+      {
+        templateId: 8260412,
+        to: newUser.email,
+        templateModel: {
+          name: newUser.name,
+          login_email: newUser.email,
+          action_url: url
+        }
+      },
+      ctx
+    );
 
     const token = setAuthCookies(newUser, ctx);
 
@@ -386,14 +394,13 @@ export const mutations = {
       resetExpires
     });
 
-    const rootUrl = ctx.graphqlAuthentication.mailer.rootUrl;
     sendEmail(
       {
         templateId: 8248819,
         to: user.email,
         templateModel: {
           name: user.name,
-          action_url: `${rootUrl}/login/reset-password/${user.email}/${
+          action_url: `${getAuthRootUrl(ctx)}/reset-password/${user.email}/${
             user.name
           }/${resetToken}`
         }
